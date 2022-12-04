@@ -1,0 +1,72 @@
+NOTES on challenge dataset predictions
+======================================
+
+# 2d data
+
+- [x] BF-C2DL-HSC       (1.6 GB)    01 looks great! no FP on boundary. size is good. same with 02! only check end and midpoint, but they look great.
+- [ ] BF-C2DL-MuSC      (1.3 GB)    01 end looks good! one cell has off-center prediction and could be larger, but cells are mostly fine. 02 looks good too!
+- [ ] DIC-C2DH-HeLa     (41 MB)     01 is a disaster. about half of predictions are FP. 02 is maybe slightly less of a disaster, but still has many FP. Overdetections even on clear cells. Also, many cells near the border predict off-center annotations! I think this is a reflection of how they were annotated in the training set! And also explains over-det in other areas.
+- [ ] Fluo-C2DL-Huh7    (36 MB)     New dataset, not included in training.
+- [ ] Fluo-C2DL-MSC     (71 MB)     01: pretty bad but not terrible. crazy cell shapes! long, thin. amazing CPNet works at all. 02: even worse. cells are even bigger and there is even more over-detection. cells are a little too big and filamentous. could try downsizing images more? TODO: are these cells same size as training data?
+- [ ] Fluo-N2DH-GOWT1   (46 MB)     01: good det! TODO: 2x mask size. it's a little too small (FIXED). some over-det on largest cell. 02: good det again! but still a little too small mask. 2x mask size. one fast moving cell is hard to track, but otherwise all slow moving & low density.
+- [x] Fluo-N2DL-HeLa    (168 MB)    01: pretty good det and size! some cells are _so_ dim & fade continuously in/out of background. impossible to see. would like to see GT. flickering det on these. 02: looks also very good. probably even better. less flickering.
+- [ ] PhC-C2DH-U373     (38 MB)     02: pretty OK, given strange shapes. low cell count = high variance. some over-det on blebbing. some over-det on bg trash. 01: mostly fine, but only ≈5 cells and the one cell right in the middle we very often overdetect. not sure why, it doesn't look special.
+- [ ] PhC-C2DL-PSC      (106 MB)    Need smaller disks ≈ 6px diam? 10px rad is OK.  100+ cells. But Det looks great!even in dense areas. There appears to be a floating string jumping around the dish... this probably messes up some detections. 
+- [ ] Fluo-N2DH-SIM+    (96 MB)     01: great DET, but mask is a little small. increase by 2x ? 02: same as 01.
+
+# 3d data
+
+- [ ] Fluo-C3DH-A549        (294 MB)    01: we could double mask radius (2x), but otherwise perfect. 02: same.
+- [ ] Fluo-C3DH-H157        (7.1 GB)    one visible FP det... t000, t059 and t030 only. 01: only ≈ 5 cells. mask is good width, but a liiiiittle too thick in Z. perfect det. cells mostly live on bottom z slice! but this seems OK. 02: same. from 2->4 cells? one cell that is 90% cut off by image boundary is un-detected... mask is again slightly too thick in Z. 
+- [ ] Fluo-C3DL-MDA231      (179 MB)    01: actually quite good despite the very hard shapes + total oversaturation. masks are too thick relative to objects. could be 1/3 thickness. Visual Estimate ≈ 0.8 detection. 20+ cells. some mysterious FN det (~ 3 cells). some FN/FP det in dense areas with funny shapes & around divisions. 5-10% mysterious FN Det. Maybe a threshold thing? same with 02.
+- [ ] Fluo-N3DH-CE          (1.7 GB)    We really need anisotropic masks here... 01/02 look great! very few FP. None at early times! even tracking looks reasonable.
+- [ ] Fluo-N3DH-CHO         (105 MB)    Better now after retraining... 01: 2FP det on large cells. maybe too big actually.... size OK (cells are large). VE > 0.8/0.9 DET. only 10 cells => high variance. DET looks good, but problems surrounding divisions. Texture change causes FP/FN.
+- [ ] Fluo-N3DL-DRO         (5.9 GB)    Now 01 looks good, but 02 (and 01 really) is almost impossible to tell if quality is high. tracking and detection. t040 only. Must restrict mask to mask000.tif set! 01: masks are 2x TOO BIG. lots of over-det on noise ? 02: same. both later stage embryos with lots of small, blurry cells. deeply invaginated cephalic furrow at 100's of µm deep.
+- [ ] Fluo-N3DL-TRIC        (19.9 GB)   01: mask size great. near zero FN. maybe 1% FP det on background. no idea why... 02: fewer mysterious FP. both 01 & 02 have mostly in-plane nuclei, but 02 has bright foci on first/last Z plane which can trigger detection. maybe FP? still expect 99% on 02.
+- [ ] Fluo-N3DL-TRIF        (467 GB)    01,02 both look good.
+- [ ] Fluo-C3DH-A549-SIM    (327 MB)    01: should be perfect, but mask could be 2x wider and half as thick in Z. 02: same
+- [ ] Fluo-N3DH-SIM+        (5.9 GB)    ✓ t=0,75,149 only. 01: mask good size and det look perfect. 02: also very good. i see one under-det (division) out of approx 100 cells?
+
+
+
+# Mon Nov 22 14:37:02 2021
+
+
+- [x] BF-C2DL-HSC-01          | OK
+- [x] BF-C2DL-HSC-02          | OK
+- [ ] BF-C2DL-MuSC-01         | disaster at 17s. FP det on cell protrusions.
+- [ ] BF-C2DL-MuSC-02         | camera shift at 13s. FP det on pitri dish boundary and cell protrusions.
+- [ ] DIC-C2DH-HeLa-01        | lots of FP det on ambiguous junk near img border. 
+- [ ] DIC-C2DH-HeLa-02        | lots of FP det on cell edges (learned from labels?)
+- [ ] Fluo-C2DL-MSC-01        | FP det 
+- [ ] Fluo-C2DL-MSC-02        | FP det 
+- [ ] Fluo-C3DH-A549-01       | radius 2x ?
+- [ ] Fluo-C3DH-A549-02       | radius 2x ?
+- [ ] Fluo-C3DH-A549-SIM-01   | radius 2x
+- [ ] Fluo-C3DH-A549-SIM-02   | radius 2x
+- [x] Fluo-C3DH-H157-01       | OK. minor color change.
+- [x] Fluo-C3DH-H157-02       | OK. 1 FP overdet. minor flickor/color change / 
+- [x] Fluo-C3DL-MDA231-01     | FP det & color flicker. in crowded areas. oversaturated imgs. flickering FP on cell protrusions.
+- [x] Fluo-C3DL-MDA231-02     | same ↑
+- [x] Fluo-N2DH-GOWT1-01      | OK. flickering on dim cells. losing cells during division.
+- [x] Fluo-N2DH-GOWT1-02      | OK. same ↑
+- [x] Fluo-N2DH-SIM+-01       | OK
+- [x] Fluo-N2DH-SIM+-02       | OK
+- [x] Fluo-N2DL-HeLa-01       | OK
+- [x] Fluo-N2DL-HeLa-02       | OK
+- [x] Fluo-N3DH-CE-01         | OK
+- [x] Fluo-N3DH-CE-02         | OK
+- [x] Fluo-N3DH-CHO-01        | cam jitter. small color flicker. FN det on one very dim cell?
+- [x] Fluo-N3DH-CHO-02        | OK. small color flicker.
+- [x] Fluo-N3DH-SIM+-01       | bg intensity varies. small color flicker.
+- [x] Fluo-N3DH-SIM+-02       | same 
+- [x] Fluo-N3DL-DRO-01        | fine
+- [x] Fluo-N3DL-DRO-02        | fine
+- [x] Fluo-N3DL-TRIC-01       | fine. can't tell if divisions are correct.
+- [x] Fluo-N3DL-TRIC-02       | cells get left behind bc of high apparent velocity (due to gastrulation + nonlinear projection)
+- [x] Fluo-N3DL-TRIF-01       | markers should be isotropic! half of cells disappear! they are amnioserosa!
+- [x] Fluo-N3DL-TRIF-02       | can't tell if divisions are correct
+- [x] PhC-C2DH-U373-01        | FP det on bio junk and cell boundary
+- [x] PhC-C2DH-U373-02        | same
+- [ ] PhC-C2DL-PSC-01         | markers (and nms_footprint?) too big
+- [ ] PhC-C2DL-PSC-02         | same
