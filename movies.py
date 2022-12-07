@@ -6,7 +6,10 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from glob import glob
-
+from skimage.segmentation import find_boundaries
+import os
+from subprocess import run, Popen
+from pathlib import Path
 
 
 ## (myname, isbiname) | my order | official ISBI order
@@ -31,7 +34,6 @@ isbi_names = [
   "PhC-C2DL-PSC",          # 17    15 
   "Fluo-N3DL-TRIF",        # 18    13 
   ]
-
 
 
 def parse_pid(pid_or_params,dims):
@@ -99,6 +101,8 @@ def img2png(x,colors=None):
   _dtype = x.dtype
   D = x.ndim
 
+  ## project 3->2
+  ## TODO FIXME: We're using max projection on RAW and LABELS. If we segmented objects + RAW we should do proper occlusion. 
   if D==3:
     a,b,c = x.shape
     yx = x.max(0)
@@ -116,9 +120,12 @@ def img2png(x,colors=None):
   # ipdb.set_trace()
 
   if 'int' in str(x.dtype):
+    simpleborder_mask = find_boundaries(x, connectivity=2, mode='inner',)
+    x[~simpleborder_mask] = 0
     x = _colorseg(x)
   else:
-    x = norm_minmax01(x)
+    # x = norm_minmax01(x)
+    x = norm_percentile01(x,2,99.5)
     x = cmap(x)
   
   x = (x*255).astype(np.uint8)
@@ -137,11 +144,6 @@ def blendRawLabPngs(pngraw,pnglab):
   # pngraw[~m] = (0.5*pngraw+0.5*pnglab)[~m]
   return pngraw
 
-
-import os
-from subprocess import run, Popen
-from pathlib import Path
-
 def makemovie(
   isbiname="DIC-C2DH-HeLa",
   dataset = "01",
@@ -154,7 +156,7 @@ def makemovie(
   savedir_common = f"/projects/project-broaddus/rawdata/isbi_challenge_out_extra/vidz/"
 
   ## NON-DENSE predictions (standard)
-  savedir = f"/projects/project-broaddus/rawdata/isbi_challenge_out_extra/{isbiname}/{dataset}/vidz/"
+  savedir = f"/projects/project-broaddus/rawdata/isbi_challenge_out_extra/{isbiname}/{dataset}/vidz2/"
   masks = sorted(glob(f"/projects/project-broaddus/rawdata/isbi_challenge_out/{isbiname}/{dataset}_RES/mask*.tif"))
   savefile = f"{savedir_common}/{isbiname}-{dataset}.mp4"
   
@@ -172,11 +174,15 @@ def makemovie(
 
   cmap = np.random.rand(256,3).clip(min=0.2)
   cmap[0] = (0,0,0)
+  # cmap[1:] = (1,0,0)
   cmap = matplotlib.colors.ListedColormap(cmap)
 
   run([f'rm {savedir}/*.png'], shell=True)
 
   for i in range(len(raws)):
+    
+    if i!=len(raws)//2: continue ## only do the middle timepoint
+
     print(f"Saving png {i}/{len(raws)} .", end='\r', flush=True)
     pngraw  = img2png(imread(raws[i]).astype(np.float32))
     pngmask = img2png(imread(masks[i]), colors=cmap)
@@ -193,7 +199,7 @@ def makemovie(
   ## to determine framerate, bitrate, duration of video run `ffmpeg -i video.mp4`
   ## videos with libx264 encoding have preview in Finder and open in Quicktime.
   ## -crf "constant rate factor" scales quality by a factor, allowing variable bitrate. default is 23 ?
-  run([f'ffmpeg -y -i {savedir}/blend%04d.png -c:v libx264 -vf "setpts=2.0*PTS,format=yuv420p" {savefile}'], shell=True)
+  # run([f'ffmpeg -y -i {savedir}/blend%04d.png -c:v libx264 -vf "setpts=2.0*PTS,format=yuv420p" {savefile}'], shell=True)
 
 
 
@@ -221,7 +227,7 @@ def make_all_movies():
     if "SIM+" in name:
       name = "".join(isbiname.split("-")[-2:]) + dataset
 
-    if "TRIF" in name: continue
+    # if "TRIF" in name: continue
     # if name not in denselist: continue
     # if name not in redolist: continue
     job  = slurm.format(name=name, pid=pid)
@@ -285,6 +291,9 @@ sbatch -J PSC01 -n 1 -t 4:00:00 -c 1 --mem 128000  -o slurm/PSC01.out -e slurm/P
 sbatch -J PSC02 -n 1 -t 4:00:00 -c 1 --mem 128000  -o slurm/PSC02.out -e slurm/PSC02.err --wrap '/bin/time -v python3 -c "import movies as A; A.make_movie_pid(35)"'
 sbatch -J TRIF01 -n 1 -t 4:00:00 -c 1 --mem 128000  -o slurm/TRIF01.out -e slurm/TRIF01.err --wrap '/bin/time -v python3 -c "import movies as A; A.make_movie_pid(36)"'
 sbatch -J TRIF02 -n 1 -t 4:00:00 -c 1 --mem 128000  -o slurm/TRIF02.out -e slurm/TRIF02.err --wrap '/bin/time -v python3 -c "import movies as A; A.make_movie_pid(37)"'
+
+sbatch -J TRIF01 -n 1 -t 0:35:00 -c 1 --mem 128000  -o slurm/TRIF01.out -e slurm/TRIF01.err --wrap '/bin/time -v python3 -c "import movies as A; A.make_movie_pid(36)"'
+sbatch -J TRIF02 -n 1 -t 0:35:00 -c 1 --mem 128000  -o slurm/TRIF02.out -e slurm/TRIF02.err --wrap '/bin/time -v python3 -c "import movies as A; A.make_movie_pid(37)"'
 
 # Dense - remember to toggle path names!
 
