@@ -10,6 +10,8 @@ from skimage.segmentation import find_boundaries
 import os
 from subprocess import run, Popen
 from pathlib import Path
+from expand_labels_scikit import expand_labels
+from skimage.measure import label, regionprops
 
 
 ## (myname, isbiname) | my order | official ISBI order
@@ -90,14 +92,6 @@ def img2png(x,colors=None):
     cmap[0] = (0,0,0)
     cmap = matplotlib.colors.ListedColormap(cmap)
 
-  def _colorseg(seg):
-    m = seg!=0
-    seg[m] %= 255 ## we need to save a color for black==0
-    seg[seg==0] = 255
-    seg[~m] = 0
-    rgb = cmap(seg)
-    return rgb
-
   _dtype = x.dtype
   D = x.ndim
 
@@ -122,7 +116,12 @@ def img2png(x,colors=None):
   if 'int' in str(x.dtype):
     simpleborder_mask = find_boundaries(x, connectivity=2, mode='inner',)
     x[~simpleborder_mask] = 0
-    x = _colorseg(x)
+    ## compress labels, but don't change labels < 255
+    m = x!=0
+    x[m] %= 255 ## we need to save a color for black==0
+    x[x==0] = 255
+    x[~m] = 0
+    x = cmap(x) ## rgb
   else:
     # x = norm_minmax01(x)
     x = norm_percentile01(x,2,99.5)
@@ -184,15 +183,38 @@ def makemovie(
     if i!=len(raws)//2: continue ## only do the middle timepoint
 
     print(f"Saving png {i}/{len(raws)} .", end='\r', flush=True)
-    pngraw  = img2png(imread(raws[i]).astype(np.float32))
-    pngmask = img2png(imread(masks[i]), colors=cmap)
-    # imsave(os.path.join(savedir,f"raw{i:04d}.png") , pngraw)
-    # imsave(os.path.join(savedir,f"mask{i:04d}.png") , pngmask)
-    blend = blendRawLabPngs(pngraw,pngmask)
-    # blend = imread(os.path.join(savedir,f"blend{i:04d}.png"))
-    h,w,_ = blend.shape
-    blend = np.pad(blend, ((0,h%2), (0,w%2), (0,0)), mode='constant')
-    imsave(os.path.join(savedir,f"blend{i:04d}.png") , blend)
+    raw  = imread(raws[i]).astype(np.float32)
+    mask = imread(masks[i])
+
+    for k,region in enumerate(regionprops(mask)):
+      boxmin = (np.array(region.bbox[:3])-(3,15,15)).clip(min=0)
+      boxmax = (np.array(region.bbox[3:])+(3,15,15)).clip(max=mask.shape)
+      ss = (slice(boxmin[0],boxmax[0]) , slice(boxmin[1],boxmax[1]) , slice(boxmin[2],boxmax[2]))
+
+      pngraw  = img2png(raw[ss])
+      pngmask = img2png(mask[ss], colors=cmap)
+      # imsave(os.path.join(savedir,f"raw{i:04d}.png") , pngraw)
+      # imsave(os.path.join(savedir,f"mask{i:04d}.png") , pngmask)
+      blend = blendRawLabPngs(pngraw,pngmask)
+      # blend = imread(os.path.join(savedir,f"blend{i:04d}.png"))
+      h,w,_ = blend.shape
+      blend = np.pad(blend, ((0,h%2), (0,w%2), (0,0)), mode='constant')
+      imsave(os.path.join(savedir,f"blend{i:04d}-box{k:04d}.png") , blend)
+
+
+    # ## decrease brightness of objects not around labels
+    # weightmask = expand_labels(mask,distance=10)==0
+    # raw[weightmask] /= 10
+
+    # pngraw  = img2png(raw)
+    # pngmask = img2png(mask, colors=cmap)
+    # # imsave(os.path.join(savedir,f"raw{i:04d}.png") , pngraw)
+    # # imsave(os.path.join(savedir,f"mask{i:04d}.png") , pngmask)
+    # blend = blendRawLabPngs(pngraw,pngmask)
+    # # blend = imread(os.path.join(savedir,f"blend{i:04d}.png"))
+    # h,w,_ = blend.shape
+    # blend = np.pad(blend, ((0,h%2), (0,w%2), (0,0)), mode='constant')
+    # imsave(os.path.join(savedir,f"blend{i:04d}.png") , blend)
 
   ## The -vf flag is alias for -filter:v which uses the filter language.
   ## To play back at half-speed use setpts=2.0*PTS in filter (Presentation Time Stamp ?)
