@@ -163,7 +163,7 @@ def tile1d_predict(end,length,border,divisible=8):
   # n_patches = ceil(end/(length+2*border))
   # n_patches = max(n_patches,2)
 
-  DD = divisible
+  DD = divisible ## discretely divisible
 
   if length >= end and end%DD==0:
     n_patches=1
@@ -212,7 +212,7 @@ def tile_multidim(img_shape,patch_shape,border_shape=None,f_singledim=tile1d_pre
   "generates all the patch coords for iterating over large dims.  ## list of coords. each coords is Dx4. "
 
   if border_shape is None: border_shape = (0,)*len(img_shape)
-  divisible = (1,8,8)[-len(border_shape):]
+  divisible = (8,8) if len(border_shape)==2 else (1,8,8)
 
   r = [f_singledim(a,b,c,d) for a,b,c,d in zip(img_shape,patch_shape,border_shape,divisible)] ## D x many x 3
   D = len(r) ## dimension
@@ -399,7 +399,7 @@ def eval_sample(rawname,cpnet,segnet,params):
   filterzone = params.evalBorder - params.radius/params.scale ## scale
   filterzone = filterzone.clip(min=0) ## in case radius > border width
   pts2    = [p for p in pts   if np.all(p%(o_shape - filterzone) >= filterzone)]
-
+  
   print(f"{len(pts)} obj detected.",flush=True)
   if len(pts2) < len(pts):
     print(f"{len(pts) - len(pts2)} obj removed by Field of Interest filter.")
